@@ -11,7 +11,7 @@ build/*
 !build/types.js
 
 # Source files (only needed for building)
-src/
+# src/ - Now included for Docker build process
 
 # Environment files (should be passed as environment variables)
 .env
@@ -35,8 +35,9 @@ Thumbs.db
 *.spec.ts
 
 # Docker build files
-Dockerfile
-.dockerignore
+# Dockerfile and .dockerignore are needed for building
+# Dockerfile
+# .dockerignore
 
 # Git
 .git/
