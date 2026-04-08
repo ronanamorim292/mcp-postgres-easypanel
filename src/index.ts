@@ -327,6 +327,7 @@ async function startHttpServer(port: number = 9008) {
       // New initialization request
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
+        enableDnsRebindingProtection: false,
         onsessioninitialized: (sessionId) => {
           console.error(`Session initialized with ID: ${sessionId}`);
           transports[sessionId] = transport;
