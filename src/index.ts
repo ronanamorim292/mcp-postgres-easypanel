@@ -2,8 +2,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
-import { CallToolRequestSchema, ListToolsRequestSchema, isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { randomUUID } from "node:crypto";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { Request, Response } from "express";
 import pool from "./db.js";
 import {
@@ -303,101 +302,49 @@ function createServer() {
 async function startHttpServer(port: number = 9008) {
   console.error(`Attempting to start MCP HTTP Server on port ${port}...`);
   const app = createMcpExpressApp({ host: "0.0.0.0" });
-  
+
   // Basic landing page for browser verification
   app.get("/", (_req: Request, res: Response) => {
     res.send("Postgres MCP Server is running!");
   });
-  
-  // Map to store transports by session ID
-  const transports: Record<string, StreamableHTTPServerTransport> = {};
 
-  // MCP POST endpoint
+  // MCP endpoint — STATELESS mode: each POST is fully self-contained
+  // This avoids "session not found" errors in proxy/load-balanced environments
   app.post("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    
-    if (sessionId && transports[sessionId]) {
-      // Reuse existing transport
-      const transport = transports[sessionId];
-      await transport.handleRequest(req, res, req.body);
-      return;
-    }
-
-    if (!sessionId && isInitializeRequest(req.body)) {
-      // New initialization request
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        enableDnsRebindingProtection: false,
-        onsessioninitialized: (sid) => {
-          console.error(`Session initialized with ID: ${sid}`);
-          transports[sid] = transport;
-        }
-      });
-
-      // Create a new server instance for this session
-      const server = createServer();
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
-      return;
-    }
-
-    // Invalid request
-    res.status(400).json({ error: "Invalid MCP request" });
-  });
-
-  // MCP DELETE endpoint (session cleanup)
-  app.delete("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (sessionId && transports[sessionId]) {
-      delete transports[sessionId];
-      console.error(`Session ${sessionId} deleted.`);
-      res.status(200).json({ message: "Session deleted" });
-    } else {
-      res.status(404).json({ error: "Session not found" });
-    }
-  });
-
-  // MCP GET endpoint (for Server-Sent Events)
-  app.get("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    
-    if (!sessionId) {
-      res.send("Postgres MCP Endpoint is active. Please connect using an MCP client (e.g., Claude Desktop).");
-      return;
-    }
-
-    if (!transports[sessionId]) {
-      res.status(404).json({ error: "Session not found or expired" });
-      return;
-    }
-
-    // Send SSE heartbeat every 25s to prevent proxy/nginx from closing idle connections
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no"); // disable nginx buffering
-
-    const heartbeat = setInterval(() => {
-      res.write(": heartbeat\n\n");
-    }, 25000);
-
-    req.on("close", () => {
-      clearInterval(heartbeat);
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless — no session tracking needed
+      enableDnsRebindingProtection: false,
     });
 
-    const transport = transports[sessionId];
-    await transport.handleRequest(req, res);
+    const server = createServer();
+    await server.connect(transport);
+
+    try {
+      await transport.handleRequest(req, res, req.body);
+    } finally {
+      await server.close();
+    }
+  });
+
+  // GET /mcp — stateless: no SSE session to look up
+  app.get("/mcp", (_req: Request, res: Response) => {
+    res.send("Postgres MCP Endpoint is active (stateless mode). Use POST to send requests.");
+  });
+
+  // DELETE /mcp — no-op in stateless mode
+  app.delete("/mcp", (_req: Request, res: Response) => {
+    res.status(200).json({ message: "Stateless mode — no session to delete." });
   });
 
   app.listen(port, "0.0.0.0", () => {
-    console.error(`✅ Postgres MCP HTTP Server listening on port ${port}`);
+    console.error(`✅ Postgres MCP HTTP Server (stateless) listening on port ${port}`);
     console.error(`📡 Access it at: http://0.0.0.0:${port}/mcp`);
   });
 }
 
 async function main() {
   const httpPort = process.env.MCP_HTTP_PORT ? parseInt(process.env.MCP_HTTP_PORT, 10) : null;
-  
+
   if (httpPort) {
     await startHttpServer(httpPort);
   } else {
