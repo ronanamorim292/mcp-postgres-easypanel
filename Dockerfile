@@ -26,6 +26,9 @@ RUN apk add --no-cache curl
 # Set working directory
 WORKDIR /app
 
+# Set default port for MCP HTTP mode
+ENV MCP_HTTP_PORT=9008
+
 # Copy package files
 COPY package*.json ./
 
