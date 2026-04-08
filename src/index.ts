@@ -301,6 +301,7 @@ function createServer() {
 // --- Server Lifecycle ---
 
 async function startHttpServer(port: number = 9008) {
+  console.error(`Attempting to start MCP HTTP Server on port ${port}...`);
   const app = createMcpExpressApp();
   
   // Basic landing page for browser verification
@@ -355,8 +356,9 @@ async function startHttpServer(port: number = 9008) {
     await transport.handleRequest(req, res);
   });
 
-  app.listen(port, () => {
-    console.error(`Postgres MCP HTTP Server listening on port ${port}`);
+  app.listen(port, "0.0.0.0", () => {
+    console.error(`✅ Postgres MCP HTTP Server listening on port ${port}`);
+    console.error(`📡 Access it at: http://0.0.0.0:${port}/mcp`);
   });
 }
 

@@ -38,11 +38,16 @@ RUN npm ci --only=production
 # Copy built files from builder stage
 COPY --from=builder /app/build ./build
 
+# Copy startup script
+COPY start.sh ./
+RUN chmod +x start.sh
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 # Set ownership
+RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Expose port (default for HTTP Streamable transport)
@@ -52,6 +57,5 @@ EXPOSE 9008
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:9008/ || exit 1
 
-# Command to run the server
-# Note: MCP_HTTP_PORT environment variable must be set to enable HTTP mode
-CMD ["node", "build/index.js"]
+# Command to run the server using the startup script
+CMD ["./start.sh"]
