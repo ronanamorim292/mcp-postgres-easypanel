@@ -328,9 +328,9 @@ async function startHttpServer(port: number = 9008) {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         enableDnsRebindingProtection: false,
-        onsessioninitialized: (sessionId) => {
-          console.error(`Session initialized with ID: ${sessionId}`);
-          transports[sessionId] = transport;
+        onsessioninitialized: (sid) => {
+          console.error(`Session initialized with ID: ${sid}`);
+          transports[sid] = transport;
         }
       });
 
@@ -343,6 +343,18 @@ async function startHttpServer(port: number = 9008) {
 
     // Invalid request
     res.status(400).json({ error: "Invalid MCP request" });
+  });
+
+  // MCP DELETE endpoint (session cleanup)
+  app.delete("/mcp", async (req: Request, res: Response) => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    if (sessionId && transports[sessionId]) {
+      delete transports[sessionId];
+      console.error(`Session ${sessionId} deleted.`);
+      res.status(200).json({ message: "Session deleted" });
+    } else {
+      res.status(404).json({ error: "Session not found" });
+    }
   });
 
   // MCP GET endpoint (for Server-Sent Events)
@@ -358,6 +370,20 @@ async function startHttpServer(port: number = 9008) {
       res.status(404).json({ error: "Session not found or expired" });
       return;
     }
+
+    // Send SSE heartbeat every 25s to prevent proxy/nginx from closing idle connections
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no"); // disable nginx buffering
+
+    const heartbeat = setInterval(() => {
+      res.write(": heartbeat\n\n");
+    }, 25000);
+
+    req.on("close", () => {
+      clearInterval(heartbeat);
+    });
 
     const transport = transports[sessionId];
     await transport.handleRequest(req, res);
