@@ -1,0 +1,36 @@
+{
+  "name": "mcp-postgres-server",
+  "version": "1.0.0",
+  "description": "Professional Model Context Protocol server for PostgreSQL",
+  "main": "build/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc --watch",
+    "serve": "MCP_HTTP_PORT=9008 node build/index.js",
+    "test:http": "node build/test-all-tools-http.js"
+  },
+  "keywords": [
+    "mcp",
+    "postgresql",
+    "postgres",
+    "llm",
+    "ai"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "express": "^5.0.1",
+    "pg": "^8.11.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.12.7",
+    "@types/pg": "^8.11.5",
+    "typescript": "^5.4.5"
+  }
+}
