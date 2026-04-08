@@ -302,7 +302,7 @@ function createServer() {
 
 async function startHttpServer(port: number = 9008) {
   console.error(`Attempting to start MCP HTTP Server on port ${port}...`);
-  const app = createMcpExpressApp();
+  const app = createMcpExpressApp({ host: "0.0.0.0" });
   
   // Basic landing page for browser verification
   app.get("/", (_req: Request, res: Response) => {
