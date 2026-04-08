@@ -348,8 +348,14 @@ async function startHttpServer(port: number = 9008) {
   // MCP GET endpoint (for Server-Sent Events)
   app.get("/mcp", async (req: Request, res: Response) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (!sessionId || !transports[sessionId]) {
-      res.status(400).json({ error: "Missing or invalid session ID" });
+    
+    if (!sessionId) {
+      res.send("Postgres MCP Endpoint is active. Please connect using an MCP client (e.g., Claude Desktop).");
+      return;
+    }
+
+    if (!transports[sessionId]) {
+      res.status(404).json({ error: "Session not found or expired" });
       return;
     }
 
