@@ -303,6 +303,11 @@ function createServer() {
 async function startHttpServer(port: number = 9008) {
   const app = createMcpExpressApp();
   
+  // Basic landing page for browser verification
+  app.get("/", (_req: Request, res: Response) => {
+    res.send("Postgres MCP Server is running!");
+  });
+  
   // Map to store transports by session ID
   const transports: Record<string, StreamableHTTPServerTransport> = {};
 
