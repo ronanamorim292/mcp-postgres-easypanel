@@ -33,14 +33,10 @@ else
     echo "📟 Modo stdio ativado (para uso com Claude Desktop)"
 fi
 
-# Construir o projeto se necessário
+# Verificar se o projeto está construído
 if [ ! -d "build" ] || [ ! -f "build/index.js" ]; then
-    echo "🔨 Construindo projeto TypeScript..."
-    npm run build
-    if [ $? -ne 0 ]; then
-        echo "❌ Falha na construção do projeto."
-        exit 1
-    fi
+    echo "❌ Erro: Diretório de build não encontrado. Verifique se o Dockerfile construiu o projeto corretamente."
+    exit 1
 fi
 
 # Executar o servidor

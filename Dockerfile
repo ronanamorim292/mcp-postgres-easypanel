@@ -8,14 +8,15 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies like TypeScript)
-RUN npm ci
+# We use --include=dev to ensure TypeScript is installed even if NODE_ENV is production
+RUN npm install --include=dev
 
 # Copy source code
 COPY src/ ./src/
 COPY tsconfig.json ./
 
 # Build TypeScript
-RUN npm run build
+RUN npx tsc
 
 # Production stage
 FROM node:20-alpine

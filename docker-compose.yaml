@@ -1,0 +1,36 @@
+services:
+  mcp-postgres:
+    build: .
+    container_name: mcp-postgres-server
+    restart: unless-stopped
+    ports:
+      - "9008:9008"
+    environment:
+      # Database connection configuration
+      # Format: postgres://user:password@host:port/database?sslmode=disable
+      - POSTGRES_URL=postgres://postgres:12345678@automacoes_postgres:5432/automacoes?sslmode=disable
+      
+      # Alternatively, you can specify individual parameters:
+      - PGHOST=automacoes_postgres
+      - PGPORT=5432
+      - PGUSER=postgres
+      - PGPASSWORD=12345678
+      - PGDATABASE=automacoes
+      
+      # MCP Server configuration
+      - MCP_HTTP_PORT=9008
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9008/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+    # If your PostgreSQL is in another network, you can use external network:
+    # external: true
+    # name: easypanel-network
